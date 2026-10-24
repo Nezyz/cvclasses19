@@ -8,8 +8,14 @@
 
 #include <cvlib.hpp>
 
+#include "utils.hpp"
+
 namespace
 {
+// расстояние между контрастными полосами разной ориентации или частоты составляет 40-80,
+// у реальных текстур контраст ниже, поэтому при большем пороге выделяется весь кадр
+const int max_eps = 100;
+
 struct user_data
 {
     std::string wnd;
@@ -43,15 +49,15 @@ int demo_select_texture(int argc, char* argv[])
     data.wnd = "origin";
     const auto demo_wnd = "demo";
 
-    int eps = 50;
+    int eps = 20;
     cv::namedWindow(data.wnd);
     cv::namedWindow(demo_wnd);
-    // \todo choose reasonable max value
-    cv::createTrackbar("eps", demo_wnd, &eps, 200);
+    cv::createTrackbar("eps", demo_wnd, &eps, max_eps);
 
     cv::setMouseCallback(data.wnd, mouse, &data);
 
     cv::Mat frame_gray;
+    utils::fps_counter fps;
     while (cv::waitKey(30) != 27) // ESC
     {
         cap >> data.image;
@@ -61,8 +67,9 @@ int demo_select_texture(int argc, char* argv[])
         if (roi.area())
         {
             const auto mask = cvlib::select_texture(frame_gray, roi, eps);
-            const auto segmented = mask.clone();
+            cv::Mat segmented = mask.clone();
             frame_gray.copyTo(segmented, mask);
+            utils::put_fps_text(segmented, fps, cv::Scalar(255));
             cv::imshow(demo_wnd, segmented);
             cv::rectangle(data.image, data.tl, data.br, cv::Scalar(0, 0, 255));
         }
