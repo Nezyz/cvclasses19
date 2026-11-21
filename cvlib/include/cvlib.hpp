@@ -24,24 +24,44 @@ cv::Mat split_and_merge(const cv::Mat& image, double stddev);
 /// \return binary mask with selected texture
 cv::Mat select_texture(const cv::Mat& image, const cv::Rect& roi, double eps);
 
-/// \brief Motion Segmentation algorithm
+/// \brief Motion Segmentation algorithm based on a single Gaussian (1G) background model of every pixel
 class motion_segmentation : public cv::BackgroundSubtractor
 {
     public:
     /// \brief ctor
-    motion_segmentation();
+    /// \param threshold, in - distance from the background model (in standard deviations) to treat pixel as foreground
+    explicit motion_segmentation(double threshold = 2.5);
 
     /// \see cv::BackgroundSubtractor::apply
+    /// \param learningRate, in - negative for automatic rate, 0 keeps the model, 1 reinitializes it from the frame
     void apply(cv::InputArray image, cv::OutputArray fgmask, double learningRate = -1) override;
+
+    /// \see cv::BackgroundSubtractor::apply
+    /// \param knownForegroundMask, in - pixels known to be foreground, they are marked as foreground and do not train the model
+    void apply(cv::InputArray image, cv::InputArray knownForegroundMask, cv::OutputArray fgmask, double learningRate = -1) override;
 
     /// \see cv::BackgroundSubtractor::BackgroundSubtractor
     void getBackgroundImage(cv::OutputArray backgroundImage) const override
     {
-        backgroundImage.assign(bg_model_);
+        bg_model_.convertTo(backgroundImage, CV_8U);
+    }
+
+    /// \brief setup threshold in standard deviations
+    void set_threshold(double threshold)
+    {
+        threshold_ = threshold;
     }
 
     private:
-    cv::Mat bg_model_;
+    void initialize(const cv::Mat& frame);
+    cv::Mat foreground_mask(const cv::Mat& frame) const;
+    void update(const cv::Mat& frame, const cv::Mat& background, double learning_rate);
+    double choose_learning_rate(double requested) const;
+
+    cv::Mat bg_model_; //< mean of every pixel and channel
+    cv::Mat variance_; //< variance of every pixel and channel
+    double threshold_;
+    int frames_count_ = 0;
 };
 
 /// \brief FAST corner detection algorithm
