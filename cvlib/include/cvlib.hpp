@@ -66,6 +66,15 @@ class corner_detector_fast : public cv::Feature2D
     {
         return "FAST_Binary";
     }
+
+    /// \brief setup minimal intensity difference between the center and the circle pixels
+    void set_threshold(int threshold)
+    {
+        threshold_ = threshold;
+    }
+
+    private:
+    int threshold_ = 20;
 };
 
 /// \brief Descriptor matched based on ratio of SSD
