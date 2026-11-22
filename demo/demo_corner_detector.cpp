@@ -9,6 +9,15 @@
 
 #include "utils.hpp"
 
+namespace
+{
+const int initial_threshold = 20;
+const int max_threshold = 100; // при большем пороге углов почти не остаётся
+const cv::Point count_text_origin(10, 20);
+const double count_font_scale = 0.6;
+const cv::Scalar green(0, 255, 0);
+} // namespace
+
 int demo_corner_detector(int argc, char* argv[])
 {
     cv::VideoCapture cap(0);
@@ -21,8 +30,11 @@ int demo_corner_detector(int argc, char* argv[])
     cv::namedWindow(main_wnd);
     cv::namedWindow(demo_wnd);
 
+    int threshold = initial_threshold;
+    cv::createTrackbar("th", demo_wnd, &threshold, max_threshold);
+
     cv::Mat frame;
-    auto detector = cv::GFTTDetector::create(); // \todo use cvlib::corner_detector_fast
+    auto detector = cvlib::corner_detector_fast::create();
     std::vector<cv::KeyPoint> corners;
 
     utils::fps_counter fps;
@@ -31,10 +43,11 @@ int demo_corner_detector(int argc, char* argv[])
         cap >> frame;
         cv::imshow(main_wnd, frame);
 
+        detector->set_threshold(threshold);
         detector->detect(frame, corners);
         cv::drawKeypoints(frame, corners, frame, cv::Scalar(0, 0, 255));
         utils::put_fps_text(frame, fps);
-        // \todo add count of the detected corners at the top left corner of the image. Use green text color.
+        cv::putText(frame, "corners: " + std::to_string(corners.size()), count_text_origin, cv::FONT_HERSHEY_SIMPLEX, count_font_scale, green);
         cv::imshow(demo_wnd, frame);
     }
 
